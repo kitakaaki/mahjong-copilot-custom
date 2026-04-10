@@ -1,9 +1,9 @@
 """ GUI Settings Window """
+from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 from common.utils import Folder
-from common.utils import list_children
 from common.log_helper import LOGGER
 from common.settings import Settings
 from common.lan_str import LAN_OPTIONS
@@ -33,6 +33,21 @@ class SettingsWindow(tk.Toplevel):
         style = ttk.Style(self)
         GUI_STYLE.set_style_normal(style)
         self.create_widgets()
+
+
+    def _list_local_model_files(self) -> list[str]:
+        """Return all local model files under models/ recursively as relative paths."""
+        model_root = Path(Folder.MODEL)
+        if not model_root.exists():
+            return [""]
+
+        model_files = []
+        for file in model_root.rglob("*"):
+            if file.is_file() and file.suffix.lower() in (".pth", ".pt"):
+                model_files.append(file.relative_to(model_root).as_posix())
+
+        model_files.sort()
+        return [""] + model_files
         
 
     def create_widgets(self):
@@ -124,7 +139,12 @@ class SettingsWindow(tk.Toplevel):
         select_menu.grid(row=cur_row, column=1, **args_entry)
         
         # Select Model File
-        model_files = [""] + list_children(Folder.MODEL)
+        model_files = self._list_local_model_files()
+        if self.st.model_file and self.st.model_file not in model_files:
+            model_files.append(self.st.model_file)
+        if self.st.model_file_3p and self.st.model_file_3p not in model_files:
+            model_files.append(self.st.model_file_3p)
+        model_files = sorted(set(model_files), key=lambda x: (x != "", x))
         cur_row += 1
         _label = ttk.Label(main_frame, text=self.st.lan().AI_MODEL_FILE)
         _label.grid(row=cur_row, column=0, **args_label)        

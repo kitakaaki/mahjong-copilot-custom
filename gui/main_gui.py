@@ -347,7 +347,24 @@ class MainGUI(tk.Tk):
                 else:
                     mode_strs.append('✖' + m.value)
             mode_str = ' | '.join(mode_strs)
-            text = f"{self.st.lan().MODEL}: {self.st.model_type} ({mode_str})"
+
+            # Show active local model file by current game mode (3P/4P) to avoid ambiguity.
+            if self.st.model_type == "Local":
+                game_mode = None
+                if self.bot_manager.game_state:
+                    game_mode = self.bot_manager.game_state.game_mode
+
+                if game_mode == GameMode.MJ3P:
+                    model_detail = f"3P: {self.st.model_file_3p}"
+                elif game_mode == GameMode.MJ4P:
+                    model_detail = f"4P: {self.st.model_file}"
+                else:
+                    model_detail = f"4P: {self.st.model_file} | 3P: {self.st.model_file_3p}"
+
+                text = f"{self.st.lan().MODEL}: {self.st.model_type} ({mode_str}) | {model_detail}"
+            else:
+                text = f"{self.st.lan().MODEL}: {self.st.model_type} ({mode_str})"
+
             self.model_bar.update_column(0, text, self.icon_green)
             if self.bot_manager.is_game_syncing():
                 self.model_bar.update_column(1, '⌛ ' + self.st.lan().SYNCING)
