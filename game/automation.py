@@ -513,11 +513,11 @@ class Automation:
         
         idx = random.randint(0, 8)
         x,y = Positions.EMOJI_BUTTON
-        steps = [ActionStepDelay(random.uniform(1.5, 3.0)), ActionStepMove(x*self.scaler, y*self.scaler)]
+        steps = [ActionStepDelay(random.uniform(1.5, 3.0)), ActionStepMove(self._sx(x), self._sy(y))]
         steps.append(ActionStepDelay(random.uniform(0.1, 0.2)))
         steps.append(ActionStepClick())
         x,y = Positions.EMOJIS[idx]
-        steps.append(ActionStepMove(x*self.scaler,y*self.scaler))
+        steps.append(ActionStepMove(self._sx(x), self._sy(y)))
         steps.append(ActionStepDelay(random.uniform(0.1, 0.2)))
         steps.append(ActionStepClick())
         self._task = AutomationTask(self.executor, f"SendEmoji{idx}", f"Send emoji {idx}")
@@ -682,6 +682,22 @@ class Automation:
     def scaler(self):
         """ scaler for 16x9 -> game resolution"""
         return self.executor.width/16
+
+    @property
+    def scaler_x(self):
+        """X-axis scaler for 16->viewport width mapping."""
+        return self.executor.width / 16
+
+    @property
+    def scaler_y(self):
+        """Y-axis scaler for 9->viewport height mapping."""
+        return self.executor.height / 9
+
+    def _sx(self, x: float) -> float:
+        return x * self.scaler_x
+
+    def _sy(self, y: float) -> float:
+        return y * self.scaler_y
     
     def steps_randomized_move(self, x:float, y:float) -> list[ActionStep]:
         """ generate list of steps for a randomized mouse move
@@ -695,10 +711,10 @@ class Automation:
                 rx = max(0, min(16, rx))
                 ry = y + 9*random.uniform(-0.5, 0.5)
                 ry = max(0, min(9, ry))
-                steps.append(ActionStepMove(rx*self.scaler, ry*self.scaler, random.randint(2, 5)))
+                steps.append(ActionStepMove(self._sx(rx), self._sy(ry), random.randint(2, 5)))
                 steps.append(ActionStepDelay(random.uniform(0.05, 0.11)))
         # then move to target
-        tx, ty = x*self.scaler, y*self.scaler
+        tx, ty = self._sx(x), self._sy(y)
         steps.append(ActionStepMove(tx, ty, random.randint(2, 5)))
         return steps
     
@@ -738,7 +754,7 @@ class Automation:
         steps.append(delay_step)
         
         xmid, ymid = 16 * random.uniform(0.25, 0.75), 9 * random.uniform(0.25, 0.75)
-        move_step = ActionStepMove(xmid*self.scaler, ymid*self.scaler, random.randint(2, 5))
+        move_step = ActionStepMove(self._sx(xmid), self._sy(ymid), random.randint(2, 5))
         move_step.ignore_step_change = ignore_step_change
         steps.append(move_step)
         return steps

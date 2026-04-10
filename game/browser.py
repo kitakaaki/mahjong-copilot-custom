@@ -4,6 +4,7 @@ import time
 import threading
 import queue
 import os
+import ctypes
 
 from io import BytesIO
 from playwright._impl._errors import TargetClosedError
@@ -73,6 +74,7 @@ class GameBrowser:
 
     def _run_browser_and_action_queue(self, url:str, proxy:str, enable_chrome_ext:bool=False):
         """ run browser and keep processing action queue (blocking)"""
+        self.width, self.height = self._clamp_viewport_to_screen(self.width, self.height)
         
         if proxy:
             proxy_object = {"server": proxy}
@@ -179,6 +181,114 @@ class GameBrowser:
                 LOGGER.error('Error closing browser: %s', e ,exc_info=True)
             self.init_vars()
         return
+
+    def _clamp_viewport_to_screen(self, viewport_w:int, viewport_h:int) -> tuple[int, int]:
+        """Clamp viewport to current screen work area to avoid oversized windows.
+        This keeps autoplay's viewport-based coordinate system intact.
+        """
+        try:
+            user32 = ctypes.windll.user32
+            screen_w = user32.GetSystemMetrics(0)
+            screen_h = user32.GetSystemMetrics(1)
+            # Reserve space for window frame/title/taskbar.
+            max_w = max(960, screen_w - 40)
+            max_h = max(540, screen_h - 140)
+            new_w = min(viewport_w, max_w)
+            new_h = min(viewport_h, max_h)
+            if new_w != viewport_w or new_h != viewport_h:
+                LOGGER.warning(
+                    "Viewport %dx%d exceeds available screen area %dx%d; using %dx%d",
+                    viewport_w,
+                    viewport_h,
+                    screen_w,
+                    screen_h,
+                    new_w,
+                    new_h,
+                )
+            return new_w, new_h
+        except Exception:
+            return viewport_w, viewport_h
+
+    def _window_launch_args(self, viewport_w:int, viewport_h:int) -> list[str]:
+        """Return Chromium launch args for a centered, screen-aware window size.
+        Keeps viewport unchanged for automation while improving initial window placement.
+        """
+        # Empirical chrome frame padding (title bar + borders) on Windows.
+        frame_w = 16
+        frame_h = 96
+        win_w = max(640, viewport_w + frame_w)
+        win_h = max(480, viewport_h + frame_h)
+
+        try:
+            user32 = ctypes.windll.user32
+            screen_w = user32.GetSystemMetrics(0)
+            screen_h = user32.GetSystemMetrics(1)
+            # Keep a small margin to reduce off-screen window risk.
+            max_w = max(640, screen_w - 20)
+            max_h = max(480, screen_h - 60)
+            win_w = min(win_w, max_w)
+            win_h = min(win_h, max_h)
+            pos_x = max(0, (screen_w - win_w) // 2)
+            pos_y = max(0, (screen_h - win_h) // 2)
+            return [f"--window-size={win_w},{win_h}", f"--window-position={pos_x},{pos_y}"]
+        except Exception:
+            # Fallback if monitor info is unavailable.
+            return [f"--window-size={win_w},{win_h}"]
+
+    def _fit_window_to_viewport(self, target_w:int, target_h:int, max_iter:int=4):
+        """Try to resize browser window so window.innerWidth/innerHeight matches target.
+        Also updates self.width/self.height to actual values for downstream scaling.
+        """
+        if not self.page:
+            return
+
+        js_get_size = """() => ({
+            innerW: window.innerWidth,
+            innerH: window.innerHeight,
+            outerW: window.outerWidth,
+            outerH: window.outerHeight,
+            screenW: window.screen.availWidth,
+            screenH: window.screen.availHeight
+        })"""
+
+        info = None
+        for _ in range(max_iter):
+            info = self.page.evaluate(js_get_size)
+            if not info:
+                break
+
+            dw = int(target_w - info['innerW'])
+            dh = int(target_h - info['innerH'])
+            if abs(dw) <= 2 and abs(dh) <= 2:
+                break
+
+            # Resize outer window by the delta between current and target inner size.
+            self.page.evaluate(
+                "(d) => window.resizeBy(d.dw, d.dh)",
+                {'dw': dw, 'dh': dh}
+            )
+
+        # Center once after fitting; ignore failure silently.
+        try:
+            info = self.page.evaluate(js_get_size)
+            if info:
+                pos_x = max(0, int((info['screenW'] - info['outerW']) / 2))
+                pos_y = max(0, int((info['screenH'] - info['outerH']) / 2))
+                self.page.evaluate("(p) => window.moveTo(p.x, p.y)", {'x': pos_x, 'y': pos_y})
+                self.width = int(info['innerW'])
+                self.height = int(info['innerH'])
+                if self.width != target_w or self.height != target_h:
+                    LOGGER.warning(
+                        "Viewport adjusted by system: requested=%dx%d actual=%dx%d",
+                        target_w,
+                        target_h,
+                        self.width,
+                        self.height,
+                    )
+                else:
+                    LOGGER.info("Viewport calibrated to %dx%d", self.width, self.height)
+        except Exception:
+            pass
 
     def _clear_action_queue(self):
         """ Clear the action queue"""
@@ -479,7 +589,7 @@ class GameBrowser:
         box_top = 0.885
         box_left = 0
         box_width = 0.115
-        box_height = 1- box_top
+        box_height = 1 - box_top
 
         # Escape JavaScript special characters and convert newlines
         js_text = text.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n') if text else ''
@@ -518,6 +628,8 @@ class GameBrowser:
             const textX = {font_size} * 0.25
             let startY = canvas.height * {box_top} + {font_size}*0.5;
             const lineHeight = {font_size} * 1.2; // Adjust line height as needed
+            const maxStartY = canvas.height - lineHeight * lines.length - {font_size} * 0.2;
+            startY = Math.min(startY, maxStartY);
             lines.forEach((line, index) => {{
                 ctx.fillText(line, canvas.width * {box_left} + textX, startY + (lineHeight * index));
             }});            

@@ -264,9 +264,127 @@ class LanStrZHS(LanStr):
     }
 
 
+class LanStrJA(LanStr):
+    """ String constants for Japanese"""
+    LANGUAGE_NAME = '日本語'
+
+    # GUI
+    APP_TITLE = '麻雀 Copilot'
+    START_BROWSER = "Webクライアント起動"
+    WEB_OVERLAY = "オーバーレイ"
+    AUTOPLAY = "自動打牌"
+    AUTO_JOIN_GAME = "自動参加"
+    AUTO_JOIN_TIMER = "自動参加タイマー"
+    OPEN_LOG_FILE = "ログを開く"
+    SETTINGS = "設定"
+    HELP = "ヘルプ"
+    LOADING = "読み込み中..."
+    EXIT = "終了"
+    EIXT_CONFIRM = "終了してもよろしいですか？"
+    AI_OUTPUT = 'AIガイド'
+    GAME_INFO = 'ゲーム情報'
+    ON = "オン"
+    OFF = "オフ"
+
+    # Settings
+    SAVE = "保存"
+    CANCEL = "キャンセル"
+    SETTINGS_TIPS = "MITM関連設定の反映には再起動が必要です"
+    AUTO_LAUNCH_BROWSER = "起動時にブラウザを開く"
+    MITM_PORT = "MITMポート"
+    UPSTREAM_PROXY = "上流プロキシ"
+    CLIENT_SIZE = "クライアントサイズ"
+    MAJSOUL_URL = "雀魂URL"
+    ENABLE_CHROME_EXT = "Chrome拡張機能を有効化"
+    LANGUAGE = "表示言語"
+    CLIENT_INJECT_PROXY = "雀魂Windowsクライアントを自動プロキシ"
+    MODEL_TYPE = "AIモデル種類"
+    AI_MODEL_FILE = "ローカルモデル (4人打ち)"
+    AI_MODEL_FILE_3P = "ローカルモデル (3人打ち)"
+    AKAGI_OT_URL = "AkagiOTサーバーURL"
+    AKAGI_OT_APIKEY = "AkagiOT APIキー"
+    MJAPI_URL = "MJAPIサーバーURL"
+    MJAPI_USER = "MJAPIユーザー"
+    MJAPI_USAGE = "API使用量"
+    MJAPI_SECRET = "MJAPIシークレット"
+    MJAPI_MODEL_SELECT = "MJAPIモデル選択"
+    LOGIN_TO_REFRESH = "ログインして更新"
+    MITM_PORT_ERROR_PROMPT = "MITMポートが無効です (1000~65535)"
+    AUTO_PLAY_SETTINGS = "自動打牌設定"
+    AUTO_IDLE_MOVE = "待機中マウス移動"
+    DRAG_DAHAI = "ドラッグで打牌"
+    RANDOM_CHOICE = "AI選択をランダム化"
+    REPLY_EMOJI_CHANCE = "絵文字返信率"
+    RANDOM_DELAY_RANGE = "基本遅延範囲 (秒)"
+    GAME_LEVELS = ["銅の間", "銀の間", "金の間", "玉の間", "王座の間"]
+    GAME_MODES = ["4人東", "4人南", "3人東", "3人南"]
+    MOUSE_RANDOM_MOVE = "マウス移動をランダム化"
+
+    # Status
+    MAIN_THREAD = "メインスレッド"
+    MITM_SERVICE = "MITMサービス"
+    BROWSER = "ブラウザ"
+    PROXY_CLIENT = "プロキシクライアント"
+    GAME_RUNNING = "対局中"
+    GAME_ERROR = "ゲームエラー"
+    SYNCING = "同期中..."
+    CALCULATING = "計算中..."
+    READY_FOR_GAME = "待機中"
+    GAME_STARTING = "開始準備"
+    KYOKU = "局"
+    HONBA = "本場"
+    MODEL = "モデル"
+    MODEL_NOT_LOADED = "モデル未ロード"
+    MODEL_LOADING = "モデル読込中..."
+    MAIN_MENU = "メインメニュー"
+    GAME_ENDING = "終局処理中"
+    GAME_NOT_RUNNING = "未起動"
+    LOCAL_MODEL_ERROR = "ローカルモデル読み込みエラー"
+    MITM_SERVER_ERROR = "MITMサービスエラー"
+    MITM_CERT_NOT_INSTALLED = "管理者実行またはMITM証明書を手動インストールしてください"
+    MAIN_THREAD_ERROR = "メインスレッドエラー"
+    MODEL_NOT_SUPPORT_MODE_ERROR = "モデルがこの対局モードに非対応"
+    CONNECTION_ERROR = "通信エラー"
+    BROWSER_ZOOM_OFF = r"ブラウザのズームを100%にしてください"
+    CHECK_ZOOM = "ブラウザズームエラー"
+
+    # Reactions
+    PASS = "スキップ"
+    DISCARD = "打牌"
+    CHI = "チー"
+    PON = "ポン"
+    KAN = "カン"
+    KAKAN = "加カン"
+    DAIMINKAN = "大明カン"
+    ANKAN = "暗カン"
+    RIICHI = "リーチ"
+    AGARI = "和了"
+    TSUMO = "ツモ"
+    RON = "ロン"
+    RYUKYOKU = "流局"
+    NUKIDORA = "抜きドラ"
+    OPTIONS_TITLE = "候補:"
+
+    MJAI_2_STR = {
+        '1m': '一萬', '2m': '二萬', '3m': '三萬', '4m': '四萬', '5m': '五萬',
+        '6m': '六萬', '7m': '七萬', '8m': '八萬', '9m': '九萬',
+        '1p': '一筒', '2p': '二筒', '3p': '三筒', '4p': '四筒', '5p': '五筒',
+        '6p': '六筒', '7p': '七筒', '8p': '八筒', '9p': '九筒',
+        '1s': '一索', '2s': '二索', '3s': '三索', '4s': '四索', '5s': '五索',
+        '6s': '六索', '7s': '七索', '8s': '八索', '9s': '九索',
+        'E': '東', 'S': '南', 'W': '西', 'N': '北',
+        'C': '中', 'F': '發', 'P': '白',
+        '5mr': '赤五萬', '5pr': '赤五筒', '5sr': '赤五索',
+        'reach': 'リーチ', 'chi_low': 'チー(下)', 'chi_mid': 'チー(中)', 'chi_high': 'チー(上)',
+        'pon': 'ポン', 'kan_select': 'カン',
+        'hora': '和了', 'ryukyoku': '流局', 'none': 'スキップ', 'nukidora': '抜きドラ'
+    }
+
+
 
 LAN_OPTIONS:dict[str, LanStr] = {
     'EN': LanStr(),
-    'ZHS': LanStrZHS(), 
+    'ZHS': LanStrZHS(),
+    'JA': LanStrJA(),
 }
 """ dict of {language code: LanString instance}"""
