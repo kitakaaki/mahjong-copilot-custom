@@ -83,6 +83,9 @@ class GameState:
         self.is_round_started:bool = False
         """ if any new round has started (so game info is available)"""
         self.is_game_ended:bool = False         # if game has ended    
+        self.last_game_end_result:dict = None  # raw NotifyGameEndResult.result payload
+        self.last_game_rank_by_seat:dict[int, int] = None  # mapping: seat -> rank (1-based)
+        self.last_game_self_rank:int = None    # own final rank (1-based)
              
     def get_game_info(self) -> GameInfo:
         """ Return game info. Return None if N/A"""        
@@ -573,8 +576,31 @@ class GameState:
     def ms_game_end_results(self, liqi_data:dict) -> dict:
         """ End game in normal way (getting results)"""
         if 'result' in liqi_data:
-            # process end result
-            pass
+            result = liqi_data['result']
+            self.last_game_end_result = result
+            players = result.get('players', [])
+            rank_by_seat:dict[int, int] = {}
+            if players:
+                # NotifyGameEndResult doesn't include rank explicitly; compute by total_point.
+                sorted_players = sorted(
+                    players,
+                    key=lambda p: (-int(p.get('totalPoint', 0)), int(p.get('seat', 0)))
+                )
+                for idx, p in enumerate(sorted_players):
+                    seat = int(p.get('seat', idx))
+                    rank_by_seat[seat] = idx + 1
+            self.last_game_rank_by_seat = rank_by_seat or None
+            if self.last_game_rank_by_seat:
+                self.last_game_self_rank = self.last_game_rank_by_seat.get(self.seat)
+                LOGGER.info(
+                    "Game ended. Final rank seat=%s rank=%s ranks=%s",
+                    self.seat,
+                    self.last_game_self_rank,
+                    self.last_game_rank_by_seat,
+                )
+            else:
+                self.last_game_self_rank = None
+                LOGGER.debug("Game ended but no player result found in NotifyGameEndResult")
         
         # self.mjai_pending_input_msgs.append(
         #     {

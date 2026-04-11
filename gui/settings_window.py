@@ -254,7 +254,16 @@ class SettingsWindow(tk.Toplevel):
         random_choice_entry = ttk.Combobox(
             main_frame, textvariable=self.randomized_choice_var, values=options, state="readonly", width=std_wid)
         random_choice_entry.grid(row=cur_row, column=1, **args_entry)
+        self.auto_adjust_random_level_var = tk.BooleanVar(value=self.st.auto_adjust_random_level)
+        _entry = ttk.Checkbutton(
+            main_frame,
+            variable=self.auto_adjust_random_level_var,
+            text=self.st.lan().AUTO_ADJUST_RANDOM_LEVEL,
+            width=std_wid*2,
+        )
+        _entry.grid(row=cur_row, column=2, columnspan=2, **args_entry)
         # reply emoji chance
+        cur_row += 1
         _label = ttk.Label(main_frame, text=self.st.lan().REPLY_EMOJI_CHANCE)
         _label.grid(row=cur_row, column=2, **args_label)
         options = [f"{i*10}%" for i in range(11)]
@@ -381,6 +390,7 @@ class SettingsWindow(tk.Toplevel):
         self.st.auto_dahai_drag = self.auto_drag_dahai_var.get()
         self.st.auto_random_move = self.random_move_var.get()
         self.st.ai_randomize_choice = randomized_choice_new
+        self.st.auto_adjust_random_level = self.auto_adjust_random_level_var.get()
         self.st.auto_reply_emoji_rate = reply_emoji_new        
         self.st.delay_random_lower = delay_lower_new
         self.st.delay_random_upper = delay_upper_new

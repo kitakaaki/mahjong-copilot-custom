@@ -19,7 +19,7 @@ from common.log_helper import LOGGER
 from common.settings import Settings
 from common.lan_str import LanStr
 from common import utils
-from common.utils import FPSCounter
+from common.utils import FPSCounter, GameMode
 from bot import Bot, get_bot
 
 
@@ -387,6 +387,11 @@ class BotManager:
                     self.automation.on_enter_game()
                 else:
                     LOGGER.warning("Game flow %s already started. ignoring new game flow %s", self.game_flow_id, msg.flow_id)
+
+            elif liqi_method == liqi.LiqiMethod.NotifyGameEndResult and self.game_state is not None:
+                # In some sessions this notify may be observed outside the recorded game flow.
+                LOGGER.info("Received game end result from flow=%s", msg.flow_id)
+                self.game_state.input(liqimsg)
                 
             elif msg.flow_id == self.game_flow_id:
                 # Game Flow Message (in-Game message)
@@ -422,12 +427,74 @@ class BotManager:
         
     def _process_end_game(self):
         # End game processes
+        self._adjust_random_choice_by_last_result()
         # self.game_flow_id = None
         self.game_state = None
         if self.browser:    # fix for corner case
             self.browser.overlay_clear_guidance()
         self.game_exception = None
         self.automation.on_end_game()
+
+    def _adjust_random_choice_by_last_result(self):
+        """Adjust AI random-choice setting from last game rank to balance performance.
+
+        Internal setting uses 0..5 where 0 is strongest and 5 is weakest.
+        User-facing level is 1..6 where 6 is strongest and 1 is weakest.
+        """
+        if self.game_state is None:
+            return
+        if not self.st.auto_adjust_random_level:
+            return
+        rank = self.game_state.last_game_self_rank
+        if rank is None:
+            return
+
+        # Positive delta means stronger level; negative means weaker level.
+        if self.game_state.game_mode == GameMode.MJ3P:
+            delta_by_rank = {
+                1: -2,
+                2: 1,
+                3: 2,
+            }
+            mode_str = "3P"
+        else:
+            delta_by_rank = {
+                1: -2,
+                2: -1,
+                3: 1,
+                4: 2,
+            }
+            mode_str = "4P"
+        delta_level = delta_by_rank.get(rank)
+        if delta_level is None:
+            LOGGER.debug("Final rank=%s in mode=%s has no random-level adjustment rule", rank, mode_str)
+            return
+
+        old_choice = int(self.st.ai_randomize_choice)
+        old_level = 6 - old_choice
+        new_level = max(1, min(6, old_level + delta_level))
+        new_choice = 6 - new_level
+        if new_choice == old_choice:
+            LOGGER.info(
+                "Final rank=%s mode=%s, random-choice unchanged at level=%s (choice=%s)",
+                rank,
+                mode_str,
+                old_level,
+                old_choice,
+            )
+            return
+
+        self.st.ai_randomize_choice = new_choice
+        self.st.save_json()
+        LOGGER.info(
+            "Final rank=%s mode=%s adjusted random-choice level %s -> %s (choice %s -> %s)",
+            rank,
+            mode_str,
+            old_level,
+            new_level,
+            old_choice,
+            new_choice,
+        )
             
     
     def _update_overlay_conditions_met(self) -> bool:
@@ -451,9 +518,7 @@ class BotManager:
             
         
     def _update_overlay_botleft(self):
-        # update overlay bottom left text        
-        # maj copilot
-        text = '😸' + self.st.lan().APP_TITLE
+        # update overlay bottom left text
 
         # Model
         model_text = '🤖'
@@ -469,6 +534,13 @@ class BotManager:
             autoplay_text = '⬛' + self.st.lan().AUTOPLAY + ': ' + self.st.lan().OFF
         if self.automation.is_running_execution():
             autoplay_text += "🖱️⏳"
+
+        # AI random level (display as 1..6, where 6 is strongest / least random)
+        random_level = max(1, min(6, 6 - int(self.st.ai_randomize_choice)))
+        if self.st.enable_automation:
+            random_level_text = f"✅{self.st.lan().AI_RANDOM_LEVEL}: {random_level}/6"
+        else:
+            random_level_text = f"⬛{self.st.lan().AI_RANDOM_LEVEL}: {random_level}/6"
 
         # line 4
         if self.main_thread_exception:
@@ -486,7 +558,7 @@ class BotManager:
         else:
             line = '🟢' + self.st.lan().READY_FOR_GAME            
         
-        text = '\n'.join((text, model_text, autoplay_text, line))       
+        text = '\n'.join((model_text, autoplay_text, random_level_text, line))
         self.browser.overlay_update_botleft(text)
 
     

@@ -65,6 +65,8 @@ class LanStr:
     ENABLE_AUTO_HU = "Enable Auto Agari (和了)"
     DRAG_DAHAI = "Mouse drag dahai"
     RANDOM_CHOICE = "Randomize AI Choice"
+    AUTO_ADJUST_RANDOM_LEVEL = "Auto Adjust AI Random Level by Result"
+    AI_RANDOM_LEVEL = "AI Lv"
     REPLY_EMOJI_CHANCE = "Reply Emoji Rate"
     RANDOM_DELAY_RANGE = "Base Delay Range (sec)"    
     GAME_LEVELS = ["Bronze", "Silver", "Gold", "Jade", "Throne"]
@@ -202,6 +204,8 @@ class LanStrZHS(LanStr):
     ENABLE_AUTO_HU = "启用自动和了(和了)"
     DRAG_DAHAI = "鼠标拖拽出牌"
     RANDOM_CHOICE = "AI 选项随机化(去重)"
+    AUTO_ADJUST_RANDOM_LEVEL = "按对局结果自动调整 AI 随机等级"
+    AI_RANDOM_LEVEL = "AI 等级"
     REPLY_EMOJI_CHANCE = "回复表情概率"
     
     RANDOM_DELAY_RANGE = "基础延迟随机范围(秒)"
@@ -322,6 +326,8 @@ class LanStrJA(LanStr):
     ENABLE_AUTO_HU = "自動和了(和了)を有効化"
     DRAG_DAHAI = "ドラッグで打牌"
     RANDOM_CHOICE = "AI選択をランダム化"
+    AUTO_ADJUST_RANDOM_LEVEL = "対局結果でAIランダムレベルを自動調整"
+    AI_RANDOM_LEVEL = "AIレベル"
     REPLY_EMOJI_CHANCE = "絵文字返信率"
     RANDOM_DELAY_RANGE = "基本遅延範囲 (秒)"
     GAME_LEVELS = ["銅の間", "銀の間", "金の間", "玉の間", "王座の間"]
