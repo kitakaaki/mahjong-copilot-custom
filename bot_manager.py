@@ -393,6 +393,7 @@ class BotManager:
                 # Feed msg to game_state for processing with AI bot
                 LOGGER.debug('Game msg: %s', str(liqimsg))
                 reaction = self.game_state.input(liqimsg)
+                self.automation.automate_ensure_auto_hu(self.game_state)
                 if reaction:
                     self._do_automation(reaction)
                 else:

@@ -292,6 +292,42 @@ class Automation:
         self.ui_state:UiState = UiState.NOT_RUNNING   # Where game UI is at. initially not running 
         
         self.last_emoji_time:float = 0.0        # timestamp of last emoji sent   
+        self._last_auto_hu_round_key = None
+        self._last_auto_hu_try_time:float = 0.0
+
+    def _ensure_auto_hu_round_start(self, gi:GameInfo):
+        """Enable auto-hu once at the beginning of each round."""
+        if not self.st.enable_auto_hu:
+            return
+        if gi is None:
+            return
+
+        now = time.time()
+        round_key = (gi.bakaze, gi.kyoku, gi.honba)
+        if self._last_auto_hu_round_key != round_key:
+            # New round: clear retry timer and force one immediate attempt.
+            self._last_auto_hu_round_key = round_key
+            self._last_auto_hu_try_time = 0.0
+
+        # Retry with an interval in case game UI API is not ready yet.
+        if now - self._last_auto_hu_try_time < 2.0:
+            return
+        self.executor.auto_hu()
+        self._last_auto_hu_try_time = now
+        LOGGER.debug("Auto-hu requested for round %s%s honba=%s", gi.bakaze, gi.kyoku, gi.honba)
+
+    def automate_ensure_auto_hu(self, game_state:GameState):
+        """Try to keep Majsoul auto-hu enabled while in game (independent of autoplay)."""
+        if game_state is None:
+            return
+        if not self.st.enable_auto_hu:
+            return
+        if self.ui_state != UiState.IN_GAME:
+            return
+        if not self.executor.is_page_normal():
+            return
+        gi = game_state.get_game_info()
+        self._ensure_auto_hu_round_start(gi)
     
     def is_running_execution(self):
         """ if task is still running"""
@@ -385,6 +421,7 @@ class Automation:
         self.stop_previous()
         gi = game_state.get_game_info()
         assert gi is not None, "Game info is None"
+        self._ensure_auto_hu_round_start(gi)
         op_step = game_state.last_op_step
         mjai_type = mjai_action['type']        
         
@@ -783,12 +820,16 @@ class Automation:
         """ enter game handler"""
         self.stop_previous()
         self.ui_state = UiState.IN_GAME
+        self._last_auto_hu_round_key = None
+        self._last_auto_hu_try_time = 0.0
 
     def on_end_game(self):
         """ end game handler"""
         self.stop_previous()
         if self.ui_state != UiState.NOT_RUNNING:
             self.ui_state = UiState.GAME_ENDING
+        self._last_auto_hu_round_key = None
+        self._last_auto_hu_try_time = 0.0
         # if auto next. go to lobby, then next
         
     def on_exit_lobby(self):

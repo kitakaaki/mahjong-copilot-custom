@@ -57,9 +57,12 @@ class LanStr:
     MJAPI_MODEL_SELECT = "MJAPI Model Select"
     LOGIN_TO_REFRESH = "Log in to refresh"
     MITM_PORT_ERROR_PROMPT = "Invalid MITM Port (must between 1000~65535)"
+    # game play behavior
+    GAME_PLAY_BEHAVIOR = "Game Play Behavior"
     # autoplay
     AUTO_PLAY_SETTINGS = "Autoplay Settings"
     AUTO_IDLE_MOVE = "Idle Mouse Move"
+    ENABLE_AUTO_HU = "Enable Auto Agari (和了)"
     DRAG_DAHAI = "Mouse drag dahai"
     RANDOM_CHOICE = "Randomize AI Choice"
     REPLY_EMOJI_CHANCE = "Reply Emoji Rate"
@@ -191,9 +194,12 @@ class LanStrZHS(LanStr):
     LOGIN_TO_REFRESH = "登录后刷新"
     AUTO_LAUNCH_BROWSER = "自动启动浏览器"
     MITM_PORT_ERROR_PROMPT = "错误的 MITM 服务端口(必须是1000~65535)"
+    # game play behavior
+    GAME_PLAY_BEHAVIOR = "游戏行为设置"
     # autoplay
     AUTO_PLAY_SETTINGS = "自动打牌设置"
     AUTO_IDLE_MOVE = "鼠标空闲移动"
+    ENABLE_AUTO_HU = "启用自动和了(和了)"
     DRAG_DAHAI = "鼠标拖拽出牌"
     RANDOM_CHOICE = "AI 选项随机化(去重)"
     REPLY_EMOJI_CHANCE = "回复表情概率"
@@ -310,8 +316,10 @@ class LanStrJA(LanStr):
     MJAPI_MODEL_SELECT = "MJAPIモデル選択"
     LOGIN_TO_REFRESH = "ログインして更新"
     MITM_PORT_ERROR_PROMPT = "MITMポートが無効です (1000~65535)"
+    GAME_PLAY_BEHAVIOR = "ゲームプレイ行動設定"
     AUTO_PLAY_SETTINGS = "自動打牌設定"
     AUTO_IDLE_MOVE = "待機中マウス移動"
+    ENABLE_AUTO_HU = "自動和了(和了)を有効化"
     DRAG_DAHAI = "ドラッグで打牌"
     RANDOM_CHOICE = "AI選択をランダム化"
     REPLY_EMOJI_CHANCE = "絵文字返信率"

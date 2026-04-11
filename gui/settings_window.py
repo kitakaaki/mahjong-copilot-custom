@@ -16,8 +16,8 @@ class SettingsWindow(tk.Toplevel):
         super().__init__(parent)
         self.st = setting
 
-        self.geometry('700x675')
-        self.minsize(700,675)        
+        self.geometry('700x750')
+        self.minsize(700,750)        
         # self.resizable(False, False)
         # set position: within main window
         parent_x = parent.winfo_x()
@@ -213,6 +213,19 @@ class SettingsWindow(tk.Toplevel):
         cur_row += 1
         sep = ttk.Separator(main_frame, orient=tk.HORIZONTAL)
         sep.grid(row=cur_row, column=0, columnspan=4, sticky="ew", pady=5)
+        ### Game Play Behavior
+        cur_row += 1
+        _label = ttk.Label(main_frame, text=self.st.lan().GAME_PLAY_BEHAVIOR)
+        _label.grid(row=cur_row, column=0, **args_label)
+        # enable auto hu
+        self.enable_auto_hu_var = tk.BooleanVar(value=self.st.enable_auto_hu)
+        enable_auto_hu_entry = ttk.Checkbutton(main_frame, variable=self.enable_auto_hu_var, text=self.st.lan().ENABLE_AUTO_HU, width=std_wid*2)
+        enable_auto_hu_entry.grid(row=cur_row, column=1, **args_entry)
+
+        # sep
+        cur_row += 1
+        sep = ttk.Separator(main_frame, orient=tk.HORIZONTAL)
+        sep.grid(row=cur_row, column=0, columnspan=4, sticky="ew", pady=5)
         ### Auto play settings
         cur_row += 1
         _label = ttk.Label(main_frame, text=self.st.lan().AUTO_PLAY_SETTINGS)
@@ -227,12 +240,13 @@ class SettingsWindow(tk.Toplevel):
         idle_move_entry = ttk.Checkbutton(main_frame, variable=self.auto_idle_move_var, text=self.st.lan().AUTO_IDLE_MOVE, width=std_wid)
         idle_move_entry.grid(row=cur_row, column=2, **args_entry)
         # drag dahai
+        cur_row += 1
         self.auto_drag_dahai_var = tk.BooleanVar(value=self.st.auto_dahai_drag)
         _entry = ttk.Checkbutton(main_frame, variable=self.auto_drag_dahai_var, text=self.st.lan().DRAG_DAHAI, width=std_wid)
-        _entry.grid(row=cur_row, column=3, **args_entry)
+        _entry.grid(row=cur_row, column=1, **args_entry)
         
         # randomize choice 
-        cur_row += 1       
+        cur_row += 1
         _label = ttk.Label(main_frame, text=self.st.lan().RANDOM_CHOICE)
         _label.grid(row=cur_row, column=0, **args_label)
         self.randomized_choice_var = tk.StringVar(value=self.st.ai_randomize_choice)
@@ -363,6 +377,7 @@ class SettingsWindow(tk.Toplevel):
         self.st.mjapi_model_select = mjapi_model_select_new
         
         self.st.auto_idle_move = self.auto_idle_move_var.get()
+        self.st.enable_auto_hu = self.enable_auto_hu_var.get()
         self.st.auto_dahai_drag = self.auto_drag_dahai_var.get()
         self.st.auto_random_move = self.random_move_var.get()
         self.st.ai_randomize_choice = randomized_choice_new

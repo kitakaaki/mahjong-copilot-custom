@@ -453,8 +453,62 @@ class GameBrowser:
         finish_event.set()
 
     def _action_autohu(self):
-        """ call autohu function in page"""
-        self.page.evaluate("() => view.DesktopMgr.Inst.setAutoHule(true)")
+        """ call autohu function in page and verify/sync UI state"""
+        # Majsoul internals can vary across versions; try known APIs and sync UI state.
+        result = self.page.evaluate("""() => {
+            const dm = globalThis?.view?.DesktopMgr?.Inst;
+            if (!dm) {
+                return { success: false, error: 'DesktopMgr is not available' };
+            }
+            
+            try {
+                // Try to set auto-hule/auto-hu
+                if (typeof dm.setAutoHule === 'function') {
+                    dm.setAutoHule(true);
+                } else if (typeof dm.setAutoHu === 'function') {
+                    dm.setAutoHu(true);
+                } else {
+                    return { success: false, error: 'No supported auto-hu API found on DesktopMgr' };
+                }
+                
+                // Check actual state
+                let stateValue = null;
+                if (dm.huleOption !== undefined) {
+                    stateValue = dm.huleOption;
+                } else if (dm.autoHu !== undefined) {
+                    stateValue = dm.autoHu;
+                } else if (dm.autoHule !== undefined) {
+                    stateValue = dm.autoHule;
+                }
+                
+                // Force UI sync: try to trigger re-render
+                if (typeof dm.updateOptionUI === 'function') {
+                    dm.updateOptionUI();
+                }
+                if (globalThis?.view?.UIMgr?.Inst?.updateOptionUI) {
+                    globalThis.view.UIMgr.Inst.updateOptionUI();
+                }
+                
+                // Return diagnostics
+                return {
+                    success: true,
+                    stateValue: stateValue,
+                    methods: Object.keys(dm).filter(k => k.includes('hule') || k.includes('hu') || k.includes('option')).slice(0, 10)
+                };
+            } catch (e) {
+                return { success: false, error: e.message };
+            }
+        }""")
+        
+        # Log result for debugging
+        if isinstance(result, dict):
+            if result.get('success'):
+                LOGGER.debug("Auto-hu set successfully. State value: %s, Available methods: %s", 
+                           result.get('stateValue'), result.get('methods'))
+            else:
+                LOGGER.warning("Auto-hu failed: %s", result.get('error'))
+        else:
+            LOGGER.warning("Auto-hu returned unexpected result: %s", result)
 
     def _action_start_overlay(self):
         """ Display overlay on page. Will ignore if already exist, or page is None"""
