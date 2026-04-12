@@ -221,6 +221,25 @@ class SettingsWindow(tk.Toplevel):
         self.enable_auto_hu_var = tk.BooleanVar(value=self.st.enable_auto_hu)
         enable_auto_hu_entry = ttk.Checkbutton(main_frame, variable=self.enable_auto_hu_var, text=self.st.lan().ENABLE_AUTO_HU, width=std_wid*2)
         enable_auto_hu_entry.grid(row=cur_row, column=1, **args_entry)
+        self.auto_confirm_round_end_var = tk.BooleanVar(value=self.st.auto_confirm_round_end)
+        auto_confirm_round_end_entry = ttk.Checkbutton(
+            main_frame,
+            variable=self.auto_confirm_round_end_var,
+            text=self.st.lan().AUTO_CONFIRM_ROUND_END,
+            width=std_wid*2,
+        )
+        auto_confirm_round_end_entry.grid(row=cur_row, column=2, columnspan=2, **args_entry)
+
+        cur_row += 1
+        _label = ttk.Label(main_frame, text=self.st.lan().AUTO_CONFIRM_ROUND_END_DURATION)
+        _label.grid(row=cur_row, column=0, **args_label)
+        self.auto_confirm_round_end_duration_var = tk.DoubleVar(value=self.st.auto_confirm_round_end_duration)
+        auto_confirm_round_end_duration_entry = ttk.Entry(
+            main_frame,
+            textvariable=self.auto_confirm_round_end_duration_var,
+            width=std_wid,
+        )
+        auto_confirm_round_end_duration_entry.grid(row=cur_row, column=1, **args_entry)
 
         # sep
         cur_row += 1
@@ -244,10 +263,6 @@ class SettingsWindow(tk.Toplevel):
         self.auto_drag_dahai_var = tk.BooleanVar(value=self.st.auto_dahai_drag)
         _entry = ttk.Checkbutton(main_frame, variable=self.auto_drag_dahai_var, text=self.st.lan().DRAG_DAHAI, width=std_wid)
         _entry.grid(row=cur_row, column=1, **args_entry)
-        # auto confirm endgame
-        self.auto_confirm_endgame_var = tk.BooleanVar(value=self.st.auto_confirm_endgame)
-        _entry = ttk.Checkbutton(main_frame, variable=self.auto_confirm_endgame_var, text=self.st.lan().AUTO_CONFIRM_ENDGAME, width=std_wid*2)
-        _entry.grid(row=cur_row, column=2, **args_entry)
         
         # randomize choice 
         cur_row += 1
@@ -391,8 +406,9 @@ class SettingsWindow(tk.Toplevel):
         
         self.st.auto_idle_move = self.auto_idle_move_var.get()
         self.st.enable_auto_hu = self.enable_auto_hu_var.get()
+        self.st.auto_confirm_round_end = self.auto_confirm_round_end_var.get()
+        self.st.auto_confirm_round_end_duration = max(1.0, min(30.0, self.auto_confirm_round_end_duration_var.get()))
         self.st.auto_dahai_drag = self.auto_drag_dahai_var.get()
-        self.st.auto_confirm_endgame = self.auto_confirm_endgame_var.get()
         self.st.auto_random_move = self.random_move_var.get()
         self.st.ai_randomize_choice = randomized_choice_new
         self.st.auto_adjust_random_level = self.auto_adjust_random_level_var.get()

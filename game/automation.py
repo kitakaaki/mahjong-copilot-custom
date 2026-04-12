@@ -92,6 +92,7 @@ class Positions:
         (14.35, 8.12),    # OK button 确定按钮
         (6.825, 6.8),     # 点击好感度礼物?
     ]
+    ROUND_END_CONFIRM = (14.35, 8.12)
     MENUS = [
         (11.5, 2.75),   # Ranked 段位场
     ]
@@ -276,6 +277,7 @@ class AutomationTask:
 
 END_GAME = "Auto_EndGame"
 JOIN_GAME = "Auto_JoinGame"
+ROUND_END_CONFIRM = "Auto_RoundEndConfirm"
 
 class Automation:
     """ Convert mjai reaction messages to browser actions, automating the AI actions on Majsoul.
@@ -294,6 +296,7 @@ class Automation:
         self.last_emoji_time:float = 0.0        # timestamp of last emoji sent   
         self._last_auto_hu_round_key = None
         self._last_auto_hu_try_time:float = 0.0
+        self._last_auto_round_end_confirm_key = None
 
     def _ensure_auto_hu_round_start(self, gi:GameInfo):
         """Enable auto-hu once at the beginning of each round."""
@@ -822,6 +825,7 @@ class Automation:
         self.ui_state = UiState.IN_GAME
         self._last_auto_hu_round_key = None
         self._last_auto_hu_try_time = 0.0
+        self._last_auto_round_end_confirm_key = None
 
     def on_end_game(self):
         """ end game handler"""
@@ -830,6 +834,7 @@ class Automation:
             self.ui_state = UiState.GAME_ENDING
         self._last_auto_hu_round_key = None
         self._last_auto_hu_try_time = 0.0
+        self._last_auto_round_end_confirm_key = None
         # if auto next. go to lobby, then next
         
     def on_exit_lobby(self):
@@ -839,50 +844,73 @@ class Automation:
             self.ui_state = UiState.NOT_RUNNING
    
     def automate_end_game(self):
-        """Automate Game end - either quick confirm or full leave to menu"""  
+        """Automate Game end go back to menu"""  
         if not self.can_automate():
             return False
-        # Gate by either auto_join_game (full exit) or auto_confirm_endgame (quick confirm)
-        if not (self.st.auto_join_game or self.st.auto_confirm_endgame):
+        if self.st.auto_join_game is False:
             return False
         self.stop_previous()
 
-        desc = "Confirming round end" if (self.st.auto_confirm_endgame and not self.st.auto_join_game) else "Going back to main menu from game ending"
-        self._task = AutomationTask(self.executor, END_GAME, desc)
+        self._task = AutomationTask(self.executor, END_GAME, "Going back to main menu from game ending")
         self._task.start_action_steps(self._end_game_iter(), None)
         return True
         
     def _end_game_iter(self) -> Iterator[ActionStep]:
-        # Strategy depends on settings:
-        # 1. If auto_join_game: do full 30-second loop (original behavior)
-        # 2. If auto_confirm_endgame (without auto_join): do quick confirm (2-3 clicks)
-        # 3. If neither: should not be called, but default to quick confirm
-        
-        x, y = Positions.GAMEOVER[0]
-        
-        if self.st.auto_join_game:
-            # Full leave/confirm loop for game end (robust against popup variations)
-            start_time = time.time()
-            duration_sec = 30.0
-            clicks = 0
-            while time.time() - start_time < duration_sec:
-                yield ActionStepDelay(random.uniform(0.5, 1.0))
-                for step in self.steps_randomized_move_click(x, y):
-                    yield step
-                clicks += 1
-            
-            self.ui_state = UiState.MAIN_MENU
-            LOGGER.info("Auto_EndGame fixed-duration leave clicks finished (%.1fs, clicks=%d)", duration_sec, clicks)
-        else:
-            # Quick confirm: just click confirm button a few times to humanize behavior
-            num_clicks = random.randint(2, 3)
-            for i in range(num_clicks):
-                yield ActionStepDelay(random.uniform(0.4, 0.8))
-                for step in self.steps_randomized_move_click(x, y):
-                    yield step
-            
-            self.ui_state = UiState.MAIN_MENU
-            LOGGER.info("Auto_ConfirmEndGame quick confirm clicks finished (clicks=%d)", num_clicks)
+        # Loose strategy by design: after game end, keep clicking leave/confirm for fixed duration.
+        # This is robust against popup variations (e.g. gift/reward pages).
+        start_time = time.time()
+        duration_sec = 30.0
+        clicks = 0
+        while time.time() - start_time < duration_sec:
+            yield ActionStepDelay(random.uniform(0.5, 1.0))
+
+            x, y = Positions.GAMEOVER[0]
+            for step in self.steps_randomized_move_click(x, y):
+                yield step
+            clicks += 1
+
+        self.ui_state = UiState.MAIN_MENU
+        LOGGER.info("Auto_EndGame fixed-duration leave clicks finished (%.1fs, clicks=%d)", duration_sec, clicks)
+
+    def automate_round_end_confirm(self, game_state:GameState) -> bool:
+        """Click the round-end confirm button once per kyoku when enabled."""
+        if not self.can_automate():
+            return False
+        if not self.st.auto_confirm_round_end:
+            return False
+        if game_state is None:
+            return False
+
+        gi = game_state.get_game_info()
+        if gi is None:
+            return False
+
+        round_key = (gi.bakaze, gi.kyoku, gi.honba)
+        if self._last_auto_round_end_confirm_key == round_key:
+            return False
+
+        self.stop_previous()
+        self._last_auto_round_end_confirm_key = round_key
+        desc = f"Confirming round end for {gi.bakaze}{gi.kyoku} honba={gi.honba}"
+        self._task = AutomationTask(self.executor, ROUND_END_CONFIRM, desc)
+        self._task.start_action_steps(self._round_end_confirm_iter(), game_state)
+        return True
+
+    def _round_end_confirm_iter(self) -> Iterator[ActionStep]:
+        start_time = time.time()
+        duration_sec = max(1.0, min(30.0, float(self.st.auto_confirm_round_end_duration)))
+        clicks = 0
+        x, y = Positions.ROUND_END_CONFIRM
+        while time.time() - start_time < duration_sec:
+            yield ActionStepDelay(random.uniform(0.4, 0.8))
+            for step in self.steps_randomized_move_click(x, y):
+                yield step
+            clicks += 1
+        LOGGER.info(
+            "Auto_RoundEndConfirm fixed-duration clicks finished (%.1fs, clicks=%d)",
+            duration_sec,
+            clicks,
+        )
             
     def automate_join_game(self):
         """ Automate join next game """

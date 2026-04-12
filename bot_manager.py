@@ -407,6 +407,12 @@ class BotManager:
                 self.automation.automate_ensure_auto_hu(self.game_state)
                 if reaction:
                     self._do_automation(reaction)
+                elif (
+                    liqi_method == liqi.LiqiMethod.ActionPrototype
+                    and liqimsg.get('data', {}).get('name') in (liqi.LiqiAction.Hule, liqi.LiqiAction.NoTile, liqi.LiqiAction.LiuJu)
+                    and self.automation.automate_round_end_confirm(self.game_state)
+                ):
+                    pass
                 else:
                     self._process_idle_automation(liqimsg)
                 # if self.game_state.is_game_ended:
