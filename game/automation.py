@@ -839,33 +839,50 @@ class Automation:
             self.ui_state = UiState.NOT_RUNNING
    
     def automate_end_game(self):
-        """Automate Game end go back to menu"""  
+        """Automate Game end - either quick confirm or full leave to menu"""  
         if not self.can_automate():
             return False
-        if self.st.auto_join_game is False:
+        # Gate by either auto_join_game (full exit) or auto_confirm_endgame (quick confirm)
+        if not (self.st.auto_join_game or self.st.auto_confirm_endgame):
             return False
         self.stop_previous()
 
-        self._task = AutomationTask(self.executor, END_GAME, "Going back to main menu from game ending")
+        desc = "Confirming round end" if (self.st.auto_confirm_endgame and not self.st.auto_join_game) else "Going back to main menu from game ending"
+        self._task = AutomationTask(self.executor, END_GAME, desc)
         self._task.start_action_steps(self._end_game_iter(), None)
         return True
         
     def _end_game_iter(self) -> Iterator[ActionStep]:
-        # Loose strategy by design: after game end, keep clicking leave/confirm for fixed duration.
-        # This is robust against popup variations (e.g. gift/reward pages).
-        start_time = time.time()
-        duration_sec = 30.0
-        clicks = 0
-        while time.time() - start_time < duration_sec:
-            yield ActionStepDelay(random.uniform(0.5, 1.0))
-
-            x, y = Positions.GAMEOVER[0]
-            for step in self.steps_randomized_move_click(x, y):
-                yield step
-            clicks += 1
-
-        self.ui_state = UiState.MAIN_MENU
-        LOGGER.info("Auto_EndGame fixed-duration leave clicks finished (%.1fs, clicks=%d)", duration_sec, clicks)
+        # Strategy depends on settings:
+        # 1. If auto_join_game: do full 30-second loop (original behavior)
+        # 2. If auto_confirm_endgame (without auto_join): do quick confirm (2-3 clicks)
+        # 3. If neither: should not be called, but default to quick confirm
+        
+        x, y = Positions.GAMEOVER[0]
+        
+        if self.st.auto_join_game:
+            # Full leave/confirm loop for game end (robust against popup variations)
+            start_time = time.time()
+            duration_sec = 30.0
+            clicks = 0
+            while time.time() - start_time < duration_sec:
+                yield ActionStepDelay(random.uniform(0.5, 1.0))
+                for step in self.steps_randomized_move_click(x, y):
+                    yield step
+                clicks += 1
+            
+            self.ui_state = UiState.MAIN_MENU
+            LOGGER.info("Auto_EndGame fixed-duration leave clicks finished (%.1fs, clicks=%d)", duration_sec, clicks)
+        else:
+            # Quick confirm: just click confirm button a few times to humanize behavior
+            num_clicks = random.randint(2, 3)
+            for i in range(num_clicks):
+                yield ActionStepDelay(random.uniform(0.4, 0.8))
+                for step in self.steps_randomized_move_click(x, y):
+                    yield step
+            
+            self.ui_state = UiState.MAIN_MENU
+            LOGGER.info("Auto_ConfirmEndGame quick confirm clicks finished (clicks=%d)", num_clicks)
             
     def automate_join_game(self):
         """ Automate join next game """

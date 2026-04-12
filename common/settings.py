@@ -55,6 +55,7 @@ class Settings:
         self.auto_reply_emoji_rate:float = self._get_value("auto_reply_emoji_rate", 0.3, lambda x: 0 <= x <= 1)
         self.auto_emoji_intervel:float = self._get_value("auto_emoji_intervel", 5.0, lambda x: 1.0 < x < 30.0)
         self.auto_dahai_drag:bool = self._get_value("auto_dahai_drag", True, self.valid_bool)
+        self.auto_confirm_endgame:bool = self._get_value("auto_confirm_endgame", False, self.valid_bool)
         self.ai_randomize_choice:int = self._get_value("ai_randomize_choice", 1, lambda x: 0 <= x <= 5)
         self.auto_adjust_random_level:bool = self._get_value("auto_adjust_random_level", False, self.valid_bool)
         self.delay_random_lower:float = self._get_value("delay_random_lower", 1, lambda x: 0 <= x )

@@ -244,6 +244,10 @@ class SettingsWindow(tk.Toplevel):
         self.auto_drag_dahai_var = tk.BooleanVar(value=self.st.auto_dahai_drag)
         _entry = ttk.Checkbutton(main_frame, variable=self.auto_drag_dahai_var, text=self.st.lan().DRAG_DAHAI, width=std_wid)
         _entry.grid(row=cur_row, column=1, **args_entry)
+        # auto confirm endgame
+        self.auto_confirm_endgame_var = tk.BooleanVar(value=self.st.auto_confirm_endgame)
+        _entry = ttk.Checkbutton(main_frame, variable=self.auto_confirm_endgame_var, text=self.st.lan().AUTO_CONFIRM_ENDGAME, width=std_wid*2)
+        _entry.grid(row=cur_row, column=2, **args_entry)
         
         # randomize choice 
         cur_row += 1
@@ -388,6 +392,7 @@ class SettingsWindow(tk.Toplevel):
         self.st.auto_idle_move = self.auto_idle_move_var.get()
         self.st.enable_auto_hu = self.enable_auto_hu_var.get()
         self.st.auto_dahai_drag = self.auto_drag_dahai_var.get()
+        self.st.auto_confirm_endgame = self.auto_confirm_endgame_var.get()
         self.st.auto_random_move = self.random_move_var.get()
         self.st.ai_randomize_choice = randomized_choice_new
         self.st.auto_adjust_random_level = self.auto_adjust_random_level_var.get()
