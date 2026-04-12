@@ -381,6 +381,7 @@ class BotManager:
                     LOGGER.info("authGame msg: %s", liqimsg)
                     LOGGER.info("Game Started. Game Flow ID=%s", msg.flow_id)
                     self.game_flow_id = msg.flow_id
+                    self._stop_lobby_transition_actions()
                     self.game_state = GameState(self.bot)    # create game state with bot
                     self.game_state.input(liqimsg)      # authGame -> mjai:start_game, no reaction
                     self.game_exception = None
@@ -395,6 +396,7 @@ class BotManager:
                 
             elif msg.flow_id == self.game_flow_id:
                 # Game Flow Message (in-Game message)
+                self._stop_lobby_transition_actions()
                 # Feed msg to game_state for processing with AI bot
                 LOGGER.debug('Game msg: %s', str(liqimsg))
                 reaction = self.game_state.input(liqimsg)
@@ -413,6 +415,16 @@ class BotManager:
 
             else:
                 LOGGER.debug('Other msg (ignored): %s', liqimsg)
+
+    def _stop_lobby_transition_actions(self):
+        """Stop join/end-game transition tasks if game traffic has started."""
+        task_info = self.automation.running_task_info()
+        if not task_info:
+            return
+        task_name, _desc = task_info
+        if task_name in (JOIN_GAME, END_GAME):
+            LOGGER.info("Stopping transition task due to game flow activity: %s", task_name)
+            self.automation.stop_previous()
                 
     def _process_idle_automation(self, liqimsg:dict):
         """ do some idle action based on liqi msg"""

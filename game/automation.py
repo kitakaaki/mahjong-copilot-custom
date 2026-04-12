@@ -851,19 +851,21 @@ class Automation:
         return True
         
     def _end_game_iter(self) -> Iterator[ActionStep]:
-        # generate action steps for exiting a match until main menu tested
-        while True:
-            res, diff = self.g_v.comp_temp(ImgTemp.MAIN_MENU)
-            if res:     # stop on main menu
-                LOGGER.debug("Visual sees main menu with diff %.1f", diff)
-                self.ui_state = UiState.MAIN_MENU
-                break
-            
-            yield ActionStepDelay(random.uniform(2,3))
-            
-            x,y = Positions.GAMEOVER[0]
-            for step in self.steps_randomized_move_click(x,y):
+        # Loose strategy by design: after game end, keep clicking leave/confirm for fixed duration.
+        # This is robust against popup variations (e.g. gift/reward pages).
+        start_time = time.time()
+        duration_sec = 30.0
+        clicks = 0
+        while time.time() - start_time < duration_sec:
+            yield ActionStepDelay(random.uniform(0.5, 1.0))
+
+            x, y = Positions.GAMEOVER[0]
+            for step in self.steps_randomized_move_click(x, y):
                 yield step
+            clicks += 1
+
+        self.ui_state = UiState.MAIN_MENU
+        LOGGER.info("Auto_EndGame fixed-duration leave clicks finished (%.1fs, clicks=%d)", duration_sec, clicks)
             
     def automate_join_game(self):
         """ Automate join next game """
@@ -879,11 +881,29 @@ class Automation:
     
     def _join_game_iter(self) -> Iterator[ActionStep]:
         # generate action steps for joining next game
+        wait_start = time.time()
+        visual_fail_streak = 0
         
         while True:     # Wait for main menu
             res, diff = self.g_v.comp_temp(ImgTemp.MAIN_MENU)
             if res:
                 LOGGER.debug("Visual sees main menu with diff %.1f", diff)
+                self.ui_state = UiState.MAIN_MENU
+                break
+
+            if diff < 0:
+                visual_fail_streak += 1
+            else:
+                visual_fail_streak = 0
+
+            # If visual checks are unstable, continue with join clicks optimistically.
+            elapsed = time.time() - wait_start
+            if elapsed > 12 and visual_fail_streak >= 3:
+                LOGGER.warning(
+                    "Auto_JoinGame cannot verify MAIN_MENU due visual failures for %.1fs; "
+                    "continue join clicks optimistically.",
+                    elapsed,
+                )
                 self.ui_state = UiState.MAIN_MENU
                 break
             yield ActionStepDelay(random.uniform(0.5, 1))
