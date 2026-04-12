@@ -193,7 +193,8 @@ class BotManager:
         """ enable automation"""
         LOGGER.debug("Bot Manager enabling automation")
         self.st.enable_automation = True
-        self.automation.decide_lobby_action()
+        if not self._is_game_session_active():
+            self.automation.decide_lobby_action()
         
         
     def disable_automation(self):
@@ -327,7 +328,10 @@ class BotManager:
         
         self.automation.automate_retry_pending(self.game_state)            # retry failed automation
         
-        if not self.game_exception:     # skip on game error
+        # Hard gate: never schedule lobby transitions (e.g. Auto_JoinGame) while in game flow.
+        if self._is_game_session_active():
+            self._stop_lobby_transition_actions()
+        elif not self.game_exception:     # skip on game error
             self.automation.decide_lobby_action()
             
         
@@ -425,6 +429,10 @@ class BotManager:
         if task_name in (JOIN_GAME, END_GAME):
             LOGGER.info("Stopping transition task due to game flow activity: %s", task_name)
             self.automation.stop_previous()
+
+    def _is_game_session_active(self) -> bool:
+        """True when current process should be treated as in-game, not lobby."""
+        return (self.game_flow_id is not None) or (self.game_state is not None)
                 
     def _process_idle_automation(self, liqimsg:dict):
         """ do some idle action based on liqi msg"""
