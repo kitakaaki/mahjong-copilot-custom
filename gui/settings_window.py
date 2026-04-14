@@ -19,6 +19,8 @@ class SettingsWindow(tk.Toplevel):
         self.geometry('700x750')
         self.minsize(700,750)        
         # self.resizable(False, False)
+        self._is_maximized:bool = False
+        self._normal_geometry:str = ""
         # set position: within main window
         parent_x = parent.winfo_x()
         parent_y = parent.winfo_y()
@@ -53,9 +55,24 @@ class SettingsWindow(tk.Toplevel):
     def create_widgets(self):
         """ Create widgets for settings dialog"""
         self.title(self.st.lan().SETTINGS)
+        top_frame = ttk.Frame(self)
+        top_frame.pack(fill="x", padx=8, pady=(6, 0))
+        self.window_size_btn_var = tk.StringVar(value="[ ]")
+        self.window_size_btn = ttk.Button(
+            top_frame,
+            textvariable=self.window_size_btn_var,
+            width=4,
+            command=self._on_toggle_window_size,
+        )
+        self.window_size_btn.pack(side=tk.RIGHT)
+
         # Main frame
         main_frame = ttk.Frame(self, padding="20")
-        main_frame.pack(expand=True, fill="both")        
+        main_frame.pack(expand=True, fill="both")
+        main_frame.grid_columnconfigure(0, weight=0)
+        main_frame.grid_columnconfigure(1, weight=1)
+        main_frame.grid_columnconfigure(2, weight=1)
+        main_frame.grid_columnconfigure(3, weight=1)
         
         pad_args = {"padx":(3, 3), "pady":(3, 2)}
         args_label = {"sticky":"e", **pad_args}
@@ -91,8 +108,8 @@ class SettingsWindow(tk.Toplevel):
         self.enable_extension_var = tk.BooleanVar(value=self.st.enable_chrome_ext)
         auto_launch_entry = ttk.Checkbutton(
             main_frame, variable=self.enable_extension_var,
-            text=self.st.lan().ENABLE_CHROME_EXT, width=std_wid+1)
-        auto_launch_entry.grid(row=cur_row, column=3, **args_entry)
+            text=self.st.lan().ENABLE_CHROME_EXT)
+        auto_launch_entry.grid(row=cur_row, column=3, sticky="w", padx=3, pady=2)
         
         # mitm port
         cur_row += 1
@@ -123,8 +140,8 @@ class SettingsWindow(tk.Toplevel):
         # proxy inject
         self.proxy_inject_var = tk.BooleanVar(value=self.st.enable_proxinject)
         check_proxy_inject = ttk.Checkbutton(
-            main_frame, variable=self.proxy_inject_var, text=self.st.lan().CLIENT_INJECT_PROXY, width=std_wid*2)
-        check_proxy_inject.grid(row=cur_row, column=2, columnspan=2, **args_entry)  
+            main_frame, variable=self.proxy_inject_var, text=self.st.lan().CLIENT_INJECT_PROXY)
+        check_proxy_inject.grid(row=cur_row, column=2, columnspan=2, sticky="w", padx=3, pady=2)
 
         # sep
         cur_row += 1
@@ -278,9 +295,33 @@ class SettingsWindow(tk.Toplevel):
             main_frame,
             variable=self.auto_adjust_random_level_var,
             text=self.st.lan().AUTO_ADJUST_RANDOM_LEVEL,
-            width=std_wid*2,
+            command=self._on_auto_adjust_random_level_toggled,
         )
-        _entry.grid(row=cur_row, column=2, columnspan=2, **args_entry)
+        _entry.grid(row=cur_row, column=2, columnspan=2, sticky="w", padx=3, pady=2)
+
+        cur_row += 1
+        _label = ttk.Label(main_frame, text=self.st.lan().AI_LEVEL_PROBABILITIES)
+        _label.grid(row=cur_row, column=0, **args_label)
+        self.auto_random_level_by_prob_var = tk.BooleanVar(value=self.st.auto_random_level_by_prob)
+        _entry = ttk.Checkbutton(
+            main_frame,
+            variable=self.auto_random_level_by_prob_var,
+            text=self.st.lan().AUTO_RANDOM_LEVEL_BY_PROB,
+            width=std_wid*2,
+            command=self._on_auto_random_level_by_prob_toggled,
+        )
+        _entry.grid(row=cur_row, column=1, **args_entry)
+        level_prob_values = self.st.ai_level_probabilities if isinstance(self.st.ai_level_probabilities, list) else [0, 0, 0, 0, 100, 0]
+        if len(level_prob_values) != 6:
+            level_prob_values = [0, 0, 0, 0, 100, 0]
+        self.ai_level_prob_vars = [tk.IntVar(value=max(0, int(level_prob_values[i]))) for i in range(6)]
+        prob_frame = ttk.Frame(main_frame)
+        prob_frame.grid(row=cur_row, column=2, columnspan=2, sticky="w", padx=3, pady=2)
+        for i, prob_var in enumerate(self.ai_level_prob_vars):
+            level = i + 1
+            random_level = 6 - level
+            ttk.Label(prob_frame, text=f"L{level}(R{random_level})").grid(row=0, column=i*2, padx=(0, 2), pady=2)
+            ttk.Entry(prob_frame, textvariable=prob_var, width=4).grid(row=0, column=i*2 + 1, padx=(0, 6), pady=2)
         # reply emoji chance
         cur_row += 1
         _label = ttk.Label(main_frame, text=self.st.lan().REPLY_EMOJI_CHANCE)
@@ -373,6 +414,19 @@ class SettingsWindow(tk.Toplevel):
         
         # auto play settings
         randomized_choice_new:int = int(self.randomized_choice_var.get().split(' ')[0])
+        try:
+            ai_level_probabilities_new = [int(v.get()) for v in self.ai_level_prob_vars]
+        except Exception:
+            messagebox.showerror("⚠", self.st.lan().AI_LEVEL_PROBABILITY_ERROR)
+            return
+        ai_level_probabilities_new = [max(0, x) for x in ai_level_probabilities_new]
+        if sum(ai_level_probabilities_new) <= 0:
+            messagebox.showerror("⚠", self.st.lan().AI_LEVEL_PROBABILITY_ERROR)
+            return
+        auto_adjust_random_level_new = self.auto_adjust_random_level_var.get()
+        auto_random_level_by_prob_new = self.auto_random_level_by_prob_var.get()
+        if auto_adjust_random_level_new and auto_random_level_by_prob_new:
+            auto_adjust_random_level_new = False
         reply_emoji_new:float = int(self.reply_emoji_var.get().split('%')[0])/100
         try:
             delay_lower_new = self.delay_random_lower_var.get()
@@ -411,7 +465,9 @@ class SettingsWindow(tk.Toplevel):
         self.st.auto_dahai_drag = self.auto_drag_dahai_var.get()
         self.st.auto_random_move = self.random_move_var.get()
         self.st.ai_randomize_choice = randomized_choice_new
-        self.st.auto_adjust_random_level = self.auto_adjust_random_level_var.get()
+        self.st.auto_adjust_random_level = auto_adjust_random_level_new
+        self.st.auto_random_level_by_prob = auto_random_level_by_prob_new
+        self.st.ai_level_probabilities = ai_level_probabilities_new
         self.st.auto_reply_emoji_rate = reply_emoji_new        
         self.st.delay_random_lower = delay_lower_new
         self.st.delay_random_upper = delay_upper_new
@@ -427,3 +483,25 @@ class SettingsWindow(tk.Toplevel):
         LOGGER.info("Closing settings window without saving")
         self.exit_save = False
         self.destroy()
+
+    def _on_toggle_window_size(self):
+        """Toggle settings window between normal size and maximized."""
+        if not self._is_maximized:
+            self._normal_geometry = self.geometry()
+            self.state('zoomed')
+            self.window_size_btn_var.set("[]")
+            self._is_maximized = True
+        else:
+            self.state('normal')
+            if self._normal_geometry:
+                self.geometry(self._normal_geometry)
+            self.window_size_btn_var.set("[ ]")
+            self._is_maximized = False
+
+    def _on_auto_adjust_random_level_toggled(self):
+        if self.auto_adjust_random_level_var.get():
+            self.auto_random_level_by_prob_var.set(False)
+
+    def _on_auto_random_level_by_prob_toggled(self):
+        if self.auto_random_level_by_prob_var.get():
+            self.auto_adjust_random_level_var.set(False)

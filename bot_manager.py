@@ -5,6 +5,7 @@ The BotManager class is run in a separate thread, and provide interface methods 
 """
 # pylint: disable=broad-exception-caught
 import time
+import random
 import queue
 import threading
 
@@ -56,6 +57,18 @@ class BotManager:
         self.is_loading_bot:bool = False                # is bot being loaded
         self.main_thread_exception:Exception = None     # Exception that had stopped the main thread
         self.game_exception:Exception = None            # game run time error (but does not break main thread)        
+
+    @staticmethod
+    def _level_to_random_choice(level:int) -> int:
+        """Map user level 1..6 (weak->strong) to random level 5..0 (high->low randomness)."""
+        lvl = max(1, min(6, int(level)))
+        return 6 - lvl
+
+    @staticmethod
+    def _random_choice_to_level(choice:int) -> int:
+        """Map random level 0..5 to user level 6..1."""
+        ch = max(0, min(5, int(choice)))
+        return 6 - ch
         
         
     def start(self):
@@ -453,13 +466,59 @@ class BotManager:
         
     def _process_end_game(self):
         # End game processes
-        self._adjust_random_choice_by_last_result()
+        self._update_random_choice_after_game_end()
         # self.game_flow_id = None
         self.game_state = None
         if self.browser:    # fix for corner case
             self.browser.overlay_clear_guidance()
         self.game_exception = None
         self.automation.on_end_game()
+
+    def _update_random_choice_after_game_end(self):
+        """Update AI random level setting after a game based on selected auto mode."""
+        if self._pick_random_choice_by_level_probability():
+            return
+        self._adjust_random_choice_by_last_result()
+
+    def _pick_random_choice_by_level_probability(self) -> bool:
+        """Pick AI level (1..6) by configured probabilities and map to internal choice (0..5)."""
+        if not self.st.auto_random_level_by_prob:
+            return False
+
+        probs = self.st.ai_level_probabilities
+        if not isinstance(probs, list) or len(probs) != 6:
+            LOGGER.warning("Skip probability-based AI level pick: invalid ai_level_probabilities=%s", probs)
+            return False
+
+        weights = [max(0.0, float(p)) for p in probs]
+        total = sum(weights)
+        if total <= 0:
+            LOGGER.warning("Skip probability-based AI level pick: total probability <= 0")
+            return False
+
+        rand = random.random() * total
+        cum = 0.0
+        chosen_level = 6
+        for idx, weight in enumerate(weights, start=1):
+            cum += weight
+            if rand < cum:
+                chosen_level = idx
+                break
+
+        new_choice = self._level_to_random_choice(chosen_level)
+        old_choice = int(self.st.ai_randomize_choice)
+        old_level = self._random_choice_to_level(old_choice)
+        self.st.ai_randomize_choice = new_choice
+        self.st.save_json()
+        LOGGER.info(
+            "Probability-picked AI level %s -> %s using weights=%s (choice %s -> %s)",
+            old_level,
+            chosen_level,
+            probs,
+            old_choice,
+            new_choice,
+        )
+        return True
 
     def _adjust_random_choice_by_last_result(self):
         """Adjust AI random-choice setting from last game rank to balance performance.
@@ -468,6 +527,8 @@ class BotManager:
         User-facing level is 1..6 where 6 is strongest and 1 is weakest.
         """
         if self.game_state is None:
+            return
+        if self.st.auto_random_level_by_prob:
             return
         if not self.st.auto_adjust_random_level:
             return
@@ -497,9 +558,9 @@ class BotManager:
             return
 
         old_choice = int(self.st.ai_randomize_choice)
-        old_level = 6 - old_choice
+        old_level = self._random_choice_to_level(old_choice)
         new_level = max(1, min(6, old_level + delta_level))
-        new_choice = 6 - new_level
+        new_choice = self._level_to_random_choice(new_level)
         if new_choice == old_choice:
             LOGGER.info(
                 "Final rank=%s mode=%s, random-choice unchanged at level=%s (choice=%s)",
@@ -562,7 +623,7 @@ class BotManager:
             autoplay_text += "🖱️⏳"
 
         # AI random level (display as 1..6, where 6 is strongest / least random)
-        random_level = max(1, min(6, 6 - int(self.st.ai_randomize_choice)))
+        random_level = self._random_choice_to_level(self.st.ai_randomize_choice)
         if self.st.enable_automation:
             random_level_text = f"✅{self.st.lan().AI_RANDOM_LEVEL}: {random_level}/6"
         else:

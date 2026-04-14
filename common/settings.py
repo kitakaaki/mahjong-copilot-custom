@@ -60,10 +60,24 @@ class Settings:
         self.auto_dahai_drag:bool = self._get_value("auto_dahai_drag", True, self.valid_bool)
         self.ai_randomize_choice:int = self._get_value("ai_randomize_choice", 1, lambda x: 0 <= x <= 5)
         self.auto_adjust_random_level:bool = self._get_value("auto_adjust_random_level", False, self.valid_bool)
+        self.auto_random_level_by_prob:bool = self._get_value("auto_random_level_by_prob", False, self.valid_bool)
+        self.ai_level_probabilities:list = self._get_value(
+            "ai_level_probabilities",
+            [0, 0, 0, 0, 100, 0],
+            self.valid_level_probability_list,
+        )
         self.delay_random_lower:float = self._get_value("delay_random_lower", 1, lambda x: 0 <= x )
         self.delay_random_upper:float = self._get_value(
             "delay_random_upper",max(2, self.delay_random_lower), lambda x: x >= self.delay_random_lower)
         self.auto_retry_interval:float = self._get_value("auto_retry_interval", 1.5, lambda x: 0.5 < x < 30.0)  # not shown
+
+        # Keep settings exclusive even for manually edited settings.json.
+        if self.auto_random_level_by_prob and self.auto_adjust_random_level:
+            LOGGER.warning(
+                "Both auto_random_level_by_prob and auto_adjust_random_level were enabled; "
+                "disabling auto_adjust_random_level to keep exclusivity."
+            )
+            self.auto_adjust_random_level = False
         
         self.auto_join_game:bool = self._get_value("auto_join_game", False, self.valid_bool)
         self.auto_join_level:int = self._get_value("auto_join_level", 1, self.valid_game_level)
@@ -162,3 +176,16 @@ class Settings:
             if url.startswith(p):
                 return True
         return False
+
+    def valid_level_probability_list(self, probs:list) -> bool:
+        """Validate AI level probability list for levels 1..6."""
+        if not isinstance(probs, list) or len(probs) != 6:
+            return False
+        total = 0.0
+        for prob in probs:
+            if not isinstance(prob, (int, float)):
+                return False
+            if prob < 0:
+                return False
+            total += float(prob)
+        return total > 0
