@@ -238,6 +238,15 @@ class SettingsWindow(tk.Toplevel):
         self.enable_auto_hu_var = tk.BooleanVar(value=self.st.enable_auto_hu)
         enable_auto_hu_entry = ttk.Checkbutton(main_frame, variable=self.enable_auto_hu_var, text=self.st.lan().ENABLE_AUTO_HU, width=std_wid*2)
         enable_auto_hu_entry.grid(row=cur_row, column=1, **args_entry)
+        self.enable_auto_no_chiponkang_var = tk.BooleanVar(value=self.st.enable_auto_no_chiponkang)
+        enable_auto_no_chiponkang_entry = ttk.Checkbutton(
+            main_frame,
+            variable=self.enable_auto_no_chiponkang_var,
+            text=self.st.lan().ENABLE_AUTO_NO_CHIPONKANG,
+            width=std_wid*2,
+        )
+        enable_auto_no_chiponkang_entry.grid(row=cur_row, column=2, columnspan=2, **args_entry)
+        cur_row += 1
         self.auto_confirm_round_end_var = tk.BooleanVar(value=self.st.auto_confirm_round_end)
         auto_confirm_round_end_entry = ttk.Checkbutton(
             main_frame,
@@ -245,7 +254,7 @@ class SettingsWindow(tk.Toplevel):
             text=self.st.lan().AUTO_CONFIRM_ROUND_END,
             width=std_wid*2,
         )
-        auto_confirm_round_end_entry.grid(row=cur_row, column=2, columnspan=2, **args_entry)
+        auto_confirm_round_end_entry.grid(row=cur_row, column=1, columnspan=2, **args_entry)
 
         cur_row += 1
         _label = ttk.Label(main_frame, text=self.st.lan().AUTO_CONFIRM_ROUND_END_DURATION)
@@ -460,6 +469,7 @@ class SettingsWindow(tk.Toplevel):
         
         self.st.auto_idle_move = self.auto_idle_move_var.get()
         self.st.enable_auto_hu = self.enable_auto_hu_var.get()
+        self.st.enable_auto_no_chiponkang = self.enable_auto_no_chiponkang_var.get()
         self.st.auto_confirm_round_end = self.auto_confirm_round_end_var.get()
         self.st.auto_confirm_round_end_duration = max(1.0, min(30.0, self.auto_confirm_round_end_duration_var.get()))
         self.st.auto_dahai_drag = self.auto_drag_dahai_var.get()

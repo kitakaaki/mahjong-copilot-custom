@@ -370,6 +370,10 @@ class GameBrowser:
         """ Queue action: Autohu action"""
         self._action_queue.put(self._action_autohu)
 
+    def auto_no_chiponkang(self):
+        """ Queue action: enable no-chi/pon/kan option."""
+        self._action_queue.put(self._action_auto_no_chiponkang)
+
     def start_overlay(self):
         """ Queue action: Start showing the overlay"""
         self._last_botleft_text = None
@@ -509,6 +513,167 @@ class GameBrowser:
                 LOGGER.warning("Auto-hu failed: %s", result.get('error'))
         else:
             LOGGER.warning("Auto-hu returned unexpected result: %s", result)
+
+    def _action_auto_no_chiponkang(self):
+        """Enable the no-chi/pon/kan option in Majsoul UI when supported."""
+        result = self.page.evaluate("""() => {
+            const dm = globalThis?.view?.DesktopMgr?.Inst;
+            if (!dm) {
+                return { success: false, error: 'DesktopMgr is not available' };
+            }
+
+            const attempts = [];
+            const allKeys = Object.keys(dm);
+            const tryCall = (name, value) => {
+                if (typeof dm[name] !== 'function') {
+                    return false;
+                }
+                try {
+                    dm[name](value);
+                    attempts.push(name);
+                    return true;
+                } catch (e) {
+                    attempts.push(`${name}:${e?.message ?? 'error'}`);
+                    return false;
+                }
+            };
+            const trySetProp = (name, value) => {
+                if (dm[name] === undefined) {
+                    return false;
+                }
+                try {
+                    dm[name] = value;
+                    attempts.push(`${name}=${value}`);
+                    return true;
+                } catch (e) {
+                    attempts.push(`${name}=${value}:${e?.message ?? 'error'}`);
+                    return false;
+                }
+            };
+
+            const candidates = [
+                ['setAutoNoChiPengGang', true],
+                ['setNoChiPengGang', true],
+                ['setAutoNoMing', true],
+                ['setNoMing', true],
+                ['setAutoChiPengGang', false],
+                ['setChiPengGang', false],
+                ['setAutoChiPonKan', false],
+                ['setChiPonKan', false],
+                ['setAutoMing', false],
+                ['setMing', false],
+                ['set_auto_no_chi_peng_gang', true],
+                ['set_no_chi_peng_gang', true],
+                ['set_auto_no_ming', true],
+                ['set_no_ming', true],
+                ['set_auto_chi_peng_gang', false],
+                ['set_chi_peng_gang', false],
+                ['set_auto_chi_pon_kan', false],
+                ['set_chi_pon_kan', false],
+                ['set_auto_ming', false],
+                ['set_ming', false],
+            ];
+
+            let called = false;
+            // Some client versions expose this as a writable field (e.g. auto_nofulu)
+            // instead of a setter method.
+            const propCandidates = [
+                ['auto_nofulu', true],
+                ['autoNoFulu', true],
+                ['autoNofulu', true],
+                ['no_fulu', true],
+                ['nofulu', true],
+                ['auto_no_fulu', true],
+                ['autoMing', false],
+                ['ming', false],
+            ];
+            for (const [name, value] of propCandidates) {
+                called = trySetProp(name, value) || called;
+            }
+
+            for (const [name, value] of candidates) {
+                called = tryCall(name, value) || called;
+            }
+
+            // Fallback for client-version differences: probe likely setter names.
+            // Keep this conservative to avoid touching unrelated APIs.
+            if (!called) {
+                const likelySetterNames = allKeys.filter((k) => {
+                    if (typeof dm[k] !== 'function') {
+                        return false;
+                    }
+                    if (!/^set[_A-Za-z]/.test(k)) {
+                        return false;
+                    }
+                    return /(ming|fulu|chi|pon|peng|gang|kan|naki|call|chipongang)/i.test(k);
+                }).slice(0, 16);
+
+                for (const name of likelySetterNames) {
+                    called = tryCall(name, true) || called;
+                    called = tryCall(name, false) || called;
+                }
+            }
+
+            if (!called) {
+                const debugKeys = allKeys.filter((k) =>
+                    /(ming|fulu|chi|pon|peng|gang|kan|naki|call|chipongang|option)/i.test(k)
+                ).slice(0, 40);
+                return {
+                    success: false,
+                    error: 'No supported no-chi/pon/kan API found on DesktopMgr',
+                    debugKeys,
+                };
+            }
+
+            let stateValue = null;
+            const stateKeys = [
+                'auto_nofulu', 'autoNoFulu', 'autoNofulu', 'no_fulu', 'nofulu', 'auto_no_fulu',
+                'autoNoChiPengGang', 'noChiPengGang',
+                'autoNoMing', 'noMing',
+                'autoChiPengGang', 'chiPengGang',
+                'autoChiPonKan', 'chiPonKan',
+                'autoMing', 'ming'
+            ];
+            for (const key of stateKeys) {
+                if (dm[key] !== undefined) {
+                    stateValue = { key, value: dm[key] };
+                    break;
+                }
+            }
+
+            if (typeof dm.updateOptionUI === 'function') {
+                dm.updateOptionUI();
+            }
+            if (globalThis?.view?.UIMgr?.Inst?.updateOptionUI) {
+                globalThis.view.UIMgr.Inst.updateOptionUI();
+            }
+
+            return {
+                success: true,
+                attempts,
+                stateValue,
+                debugKeys: allKeys.filter((k) =>
+                    /(ming|fulu|chi|pon|peng|gang|kan|naki|call|chipongang|option)/i.test(k)
+                ).slice(0, 40),
+            };
+        }""")
+
+        if isinstance(result, dict):
+            if result.get('success'):
+                LOGGER.debug(
+                    "No-chi/pon/kan set successfully. State value: %s, Attempts: %s, Debug keys: %s",
+                    result.get('stateValue'),
+                    result.get('attempts'),
+                    result.get('debugKeys'),
+                )
+            else:
+                LOGGER.warning(
+                    "No-chi/pon/kan failed: %s. Debug keys: %s",
+                    result.get('error'),
+                    result.get('debugKeys'),
+                )
+        else:
+            LOGGER.warning("No-chi/pon/kan returned unexpected result: %s", result)
 
     def _action_start_overlay(self):
         """ Display overlay on page. Will ignore if already exist, or page is None"""

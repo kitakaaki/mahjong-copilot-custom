@@ -52,6 +52,7 @@ class Settings:
         self.auto_idle_move:bool = self._get_value("auto_idle_move", False, self.valid_bool)
         self.auto_random_move:bool = self._get_value("auto_random_move", False, self.valid_bool)
         self.enable_auto_hu:bool = self._get_value("enable_auto_hu", True, self.valid_bool)
+        self.enable_auto_no_chiponkang:bool = self._get_value("enable_auto_no_chiponkang", False, self.valid_bool)
         self.auto_confirm_round_end:bool = self._get_value("auto_confirm_round_end", False, self.valid_bool)
         self.auto_confirm_round_end_duration:float = self._get_value(
             "auto_confirm_round_end_duration", 7.0, lambda x: 1.0 <= x <= 30.0)

@@ -296,6 +296,8 @@ class Automation:
         self.last_emoji_time:float = 0.0        # timestamp of last emoji sent   
         self._last_auto_hu_round_key = None
         self._last_auto_hu_try_time:float = 0.0
+        self._last_auto_no_chiponkang_round_key = None
+        self._last_auto_no_chiponkang_try_time:float = 0.0
         self._last_auto_round_end_confirm_key = None
 
     def _ensure_auto_hu_round_start(self, gi:GameInfo):
@@ -319,11 +321,32 @@ class Automation:
         self._last_auto_hu_try_time = now
         LOGGER.debug("Auto-hu requested for round %s%s honba=%s", gi.bakaze, gi.kyoku, gi.honba)
 
+    def _ensure_auto_no_chiponkang_round_start(self, gi:GameInfo):
+        """Enable no-chi/pon/kan once at the beginning of each round."""
+        if not self.st.enable_auto_no_chiponkang:
+            return
+        if gi is None:
+            return
+
+        now = time.time()
+        round_key = (gi.bakaze, gi.kyoku, gi.honba)
+        if self._last_auto_no_chiponkang_round_key != round_key:
+            # New round: clear retry timer and force one immediate attempt.
+            self._last_auto_no_chiponkang_round_key = round_key
+            self._last_auto_no_chiponkang_try_time = 0.0
+
+        # Retry with an interval in case game UI API is not ready yet.
+        if now - self._last_auto_no_chiponkang_try_time < 2.0:
+            return
+        self.executor.auto_no_chiponkang()
+        self._last_auto_no_chiponkang_try_time = now
+        LOGGER.debug("No-chi/pon/kan requested for round %s%s honba=%s", gi.bakaze, gi.kyoku, gi.honba)
+
     def automate_ensure_auto_hu(self, game_state:GameState):
-        """Try to keep Majsoul auto-hu enabled while in game (independent of autoplay)."""
+        """Try to keep round-start option toggles enabled while in game (independent of autoplay)."""
         if game_state is None:
             return
-        if not self.st.enable_auto_hu:
+        if not self.st.enable_auto_hu and not self.st.enable_auto_no_chiponkang:
             return
         if self.ui_state != UiState.IN_GAME:
             return
@@ -331,6 +354,7 @@ class Automation:
             return
         gi = game_state.get_game_info()
         self._ensure_auto_hu_round_start(gi)
+        self._ensure_auto_no_chiponkang_round_start(gi)
     
     def is_running_execution(self):
         """ if task is still running"""
@@ -825,6 +849,8 @@ class Automation:
         self.ui_state = UiState.IN_GAME
         self._last_auto_hu_round_key = None
         self._last_auto_hu_try_time = 0.0
+        self._last_auto_no_chiponkang_round_key = None
+        self._last_auto_no_chiponkang_try_time = 0.0
         self._last_auto_round_end_confirm_key = None
 
     def on_end_game(self):
@@ -834,6 +860,8 @@ class Automation:
             self.ui_state = UiState.GAME_ENDING
         self._last_auto_hu_round_key = None
         self._last_auto_hu_try_time = 0.0
+        self._last_auto_no_chiponkang_round_key = None
+        self._last_auto_no_chiponkang_try_time = 0.0
         self._last_auto_round_end_confirm_key = None
         # if auto next. go to lobby, then next
         
